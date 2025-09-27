@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"parser/internal/html"
@@ -13,10 +14,13 @@ import (
 
 const (
 	htmlSpecURL       = "https://html.spec.whatwg.org/multipage/indices.html"
-	htmlIndexPath     = "data/html_elements_index.json"
 	htmlSchemaVersion = "1.1.0"
 	svgSchemaVersion  = "1.0.0"
-	svgIndexPath      = "data/svg_elements_index.json"
+)
+
+var (
+	htmlIndexPath = filepath.Join("..", "data", "html_elements_index.json")
+	svgIndexPath  = filepath.Join("..", "data", "svg_elements_index.json")
 )
 
 func main() {
