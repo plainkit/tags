@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"parser/internal/html"
+	"parser/internal/mathml"
 	"parser/internal/output"
 	"parser/internal/svg"
 )
@@ -16,13 +17,16 @@ const (
 	htmlSpecURL       = "https://html.spec.whatwg.org/multipage/indices.html"
 	htmlSchemaVersion = "1.1.0"
 	svgSchemaVersion  = "1.0.0"
+	mathSchemaVersion = "1.0.0"
 )
 
 var (
 	htmlIndexPath = filepath.Join("..", "json", "html_elements_index.json")
 	svgIndexPath  = filepath.Join("..", "json", "svg_elements_index.json")
+	mathIndexPath = filepath.Join("..", "json", "mathml_elements.json")
 	htmlGoPath    = filepath.Join("..", "html.go")
 	svgGoPath     = filepath.Join("..", "svg.go")
+	mathGoPath    = filepath.Join("..", "mathml.go")
 )
 
 func main() {
@@ -41,6 +45,9 @@ func run() error {
 		return err
 	}
 	if err := output.EnsureDir(svgIndexPath); err != nil {
+		return err
+	}
+	if err := output.EnsureDir(mathIndexPath); err != nil {
 		return err
 	}
 
@@ -63,6 +70,17 @@ func run() error {
 		return err
 	}
 	if err := svg.WriteGo(svgGoPath, "tags", svgOutput); err != nil {
+		return err
+	}
+
+	mathOutput, err := mathml.Build(ctx, client, mathSchemaVersion, nil)
+	if err != nil {
+		return err
+	}
+	if err := mathml.Write(mathIndexPath, mathOutput); err != nil {
+		return err
+	}
+	if err := mathml.WriteGo(mathGoPath, "tags", mathOutput); err != nil {
 		return err
 	}
 
