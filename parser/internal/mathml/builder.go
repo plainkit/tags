@@ -254,13 +254,14 @@ func extractTag(raw string) string {
 }
 
 func normalize(value string) string {
+	value = html.UnescapeString(value)
+	value = strings.ReplaceAll(value, "\u00A0", " ")
 	value = strings.TrimSpace(value)
 	value = strings.TrimSuffix(value, "/")
 	value = strings.Trim(value, "`")
 	value = strings.Trim(value, "\"")
-	value = strings.ReplaceAll(value, "\u00A0", " ")
-	value = strings.TrimSpace(value)
 	value = strings.ToLower(value)
+	value = strings.TrimSpace(value)
 	return value
 }
 
