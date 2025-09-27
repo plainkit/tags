@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"parser/internal/index"
+	"parser/internal/html"
 )
 
 const (
@@ -29,10 +29,10 @@ func run() error {
 		Timeout: 30 * time.Second,
 	}
 
-	output, err := index.Build(ctx, client, specURL, schemaVersion)
+	output, err := html.Build(ctx, client, specURL, schemaVersion)
 	if err != nil {
 		return err
 	}
 
-	return index.Write(elementsIndexPath, output)
+	return html.Write(elementsIndexPath, output)
 }
