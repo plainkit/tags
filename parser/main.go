@@ -19,8 +19,8 @@ const (
 )
 
 var (
-	htmlIndexPath = filepath.Join("..", "data", "html_elements_index.json")
-	svgIndexPath  = filepath.Join("..", "data", "svg_elements_index.json")
+	htmlIndexPath = filepath.Join("..", "json", "html_elements_index.json")
+	svgIndexPath  = filepath.Join("..", "json", "svg_elements_index.json")
 )
 
 func main() {
