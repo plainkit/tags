@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/format"
 	"io"
 	"net/http"
 	"os"
@@ -108,6 +109,68 @@ func Write(path string, payload Output) error {
 	if err := os.WriteFile(path, jsonBytes, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
+	return nil
+}
+
+// WriteGo renders the payload as Go source in the provided package.
+func WriteGo(path, packageName string, payload Output) error {
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf, "package %s\n\n", packageName)
+
+	buf.WriteString("type SVGElement struct {\n\tAttributes []string\n}\n\n")
+	buf.WriteString("type SVGMeta struct {\n\tSources []string\n\tSchemaVersion string\n\tElementCount int\n\tAttributeCount int\n}\n\n")
+	buf.WriteString("type SVGIndex struct {\n\tMeta SVGMeta\n\tGlobals []string\n\tElements map[string]SVGElement\n}\n\n")
+
+	buf.WriteString("var SVG = SVGIndex{\n")
+	buf.WriteString("\tMeta: SVGMeta{\n")
+	buf.WriteString("\t\tSources: []string{\n")
+	for _, src := range payload.Meta.Sources {
+		fmt.Fprintf(&buf, "\t\t\t%q,\n", src)
+	}
+	buf.WriteString("\t\t},\n")
+	fmt.Fprintf(&buf, "\t\tSchemaVersion: %q,\n", payload.Meta.SchemaVersion)
+	fmt.Fprintf(&buf, "\t\tElementCount: %d,\n", payload.Meta.ElementCount)
+	fmt.Fprintf(&buf, "\t\tAttributeCount: %d,\n", payload.Meta.AttributeCount)
+	buf.WriteString("\t},\n")
+
+	buf.WriteString("\tGlobals: []string{\n")
+	for _, attr := range payload.Globals {
+		fmt.Fprintf(&buf, "\t\t%q,\n", attr)
+	}
+	buf.WriteString("\t},\n")
+
+	keys := make([]string, 0, len(payload.Elements))
+	for key := range payload.Elements {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	buf.WriteString("\tElements: map[string]SVGElement{\n")
+	for _, key := range keys {
+		element := payload.Elements[key]
+		fmt.Fprintf(&buf, "\t\t%q: {\n", key)
+		if len(element.Attributes) > 0 {
+			buf.WriteString("\t\t\tAttributes: []string{\n")
+			for _, attr := range element.Attributes {
+				fmt.Fprintf(&buf, "\t\t\t\t%q,\n", attr)
+			}
+			buf.WriteString("\t\t\t},\n")
+		}
+		buf.WriteString("\t\t},\n")
+	}
+	buf.WriteString("\t},\n")
+	buf.WriteString("}\n")
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("format svg go: %w", err)
+	}
+
+	if err := os.WriteFile(path, formatted, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
 	return nil
 }
 

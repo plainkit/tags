@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/format"
 	"io"
 	"net/http"
 	"os"
@@ -166,6 +167,76 @@ func Write(path string, payload Output) error {
 
 	jsonBytes = append(jsonBytes, '\n')
 	if err := os.WriteFile(path, jsonBytes, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// WriteGo renders the payload as Go source in the provided package.
+func WriteGo(path, packageName string, payload Output) error {
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf, "package %s\n\n", packageName)
+
+	buf.WriteString("type AttributeRef struct {\n\tName string\n\tBoolean bool\n}\n\n")
+	buf.WriteString("type HTMLElement struct {\n\tEmpty bool\n\tAttributes []AttributeRef\n}\n\n")
+	buf.WriteString("type HTMLMeta struct {\n\tSource string\n\tSchemaVersion string\n\tElementCount int\n\tAttributeCount int\n}\n\n")
+	buf.WriteString("type HTMLIndex struct {\n\tMeta HTMLMeta\n\tGlobals []AttributeRef\n\tElements map[string]HTMLElement\n}\n\n")
+
+	buf.WriteString("var HTML = HTMLIndex{\n")
+	buf.WriteString("\tMeta: HTMLMeta{\n")
+	fmt.Fprintf(&buf, "\t\tSource: %q,\n", payload.Meta.Source)
+	fmt.Fprintf(&buf, "\t\tSchemaVersion: %q,\n", payload.Meta.SchemaVersion)
+	fmt.Fprintf(&buf, "\t\tElementCount: %d,\n", payload.Meta.ElementCount)
+	fmt.Fprintf(&buf, "\t\tAttributeCount: %d,\n", payload.Meta.AttributeCount)
+	buf.WriteString("\t},\n")
+
+	buf.WriteString("\tGlobals: []AttributeRef{\n")
+	for _, ref := range payload.Globals {
+		if ref.Boolean {
+			fmt.Fprintf(&buf, "\t\t{Name: %q, Boolean: true},\n", ref.Name)
+		} else {
+			fmt.Fprintf(&buf, "\t\t{Name: %q},\n", ref.Name)
+		}
+	}
+	buf.WriteString("\t},\n")
+
+	keys := make([]string, 0, len(payload.Elements))
+	for key := range payload.Elements {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	buf.WriteString("\tElements: map[string]HTMLElement{\n")
+	for _, key := range keys {
+		element := payload.Elements[key]
+		fmt.Fprintf(&buf, "\t\t%q: {\n", key)
+		if element.Empty {
+			buf.WriteString("\t\t\tEmpty: true,\n")
+		}
+		if len(element.Attributes) > 0 {
+			buf.WriteString("\t\t\tAttributes: []AttributeRef{\n")
+			for _, attr := range element.Attributes {
+				if attr.Boolean {
+					fmt.Fprintf(&buf, "\t\t\t\t{Name: %q, Boolean: true},\n", attr.Name)
+				} else {
+					fmt.Fprintf(&buf, "\t\t\t\t{Name: %q},\n", attr.Name)
+				}
+			}
+			buf.WriteString("\t\t\t},\n")
+		}
+		buf.WriteString("\t\t},\n")
+	}
+	buf.WriteString("\t},\n")
+	buf.WriteString("}\n")
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("format html go: %w", err)
+	}
+
+	if err := os.WriteFile(path, formatted, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 

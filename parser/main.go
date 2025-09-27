@@ -21,6 +21,8 @@ const (
 var (
 	htmlIndexPath = filepath.Join("..", "json", "html_elements_index.json")
 	svgIndexPath  = filepath.Join("..", "json", "svg_elements_index.json")
+	htmlGoPath    = filepath.Join("..", "html.go")
+	svgGoPath     = filepath.Join("..", "svg.go")
 )
 
 func main() {
@@ -49,12 +51,18 @@ func run() error {
 	if err := html.Write(htmlIndexPath, htmlOutput); err != nil {
 		return err
 	}
+	if err := html.WriteGo(htmlGoPath, "tags", htmlOutput); err != nil {
+		return err
+	}
 
 	svgOutput, err := svg.Build(ctx, client, svgSchemaVersion)
 	if err != nil {
 		return err
 	}
 	if err := svg.Write(svgIndexPath, svgOutput); err != nil {
+		return err
+	}
+	if err := svg.WriteGo(svgGoPath, "tags", svgOutput); err != nil {
 		return err
 	}
 
