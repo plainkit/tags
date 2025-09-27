@@ -7,12 +7,16 @@ import (
 	"time"
 
 	"parser/internal/html"
+	"parser/internal/output"
+	"parser/internal/svg"
 )
 
 const (
-	specURL           = "https://html.spec.whatwg.org/multipage/indices.html"
-	elementsIndexPath = "html_elements_index.json"
-	schemaVersion     = "1.1.0"
+	htmlSpecURL       = "https://html.spec.whatwg.org/multipage/indices.html"
+	htmlIndexPath     = "data/html_elements_index.json"
+	htmlSchemaVersion = "1.1.0"
+	svgSchemaVersion  = "1.0.0"
+	svgIndexPath      = "data/svg_elements_index.json"
 )
 
 func main() {
@@ -25,14 +29,30 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := &http.Client{Timeout: 30 * time.Second}
 
-	output, err := html.Build(ctx, client, specURL, schemaVersion)
-	if err != nil {
+	if err := output.EnsureDir(htmlIndexPath); err != nil {
+		return err
+	}
+	if err := output.EnsureDir(svgIndexPath); err != nil {
 		return err
 	}
 
-	return html.Write(elementsIndexPath, output)
+	htmlOutput, err := html.Build(ctx, client, htmlSpecURL, htmlSchemaVersion)
+	if err != nil {
+		return err
+	}
+	if err := html.Write(htmlIndexPath, htmlOutput); err != nil {
+		return err
+	}
+
+	svgOutput, err := svg.Build(ctx, client, svgSchemaVersion)
+	if err != nil {
+		return err
+	}
+	if err := svg.Write(svgIndexPath, svgOutput); err != nil {
+		return err
+	}
+
+	return nil
 }
