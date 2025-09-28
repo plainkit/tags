@@ -1,6 +1,6 @@
 # tags
 
-Spec-accurate catalogues of HTML, SVG, and MathML elements keep downstream tooling reliable. Instead of relying on hand-maintained lists that drift, the library automatically scrapes the standards, normalizes the data, and publishes ready-to-import code.
+Accurate catalogues of HTML, SVG, and MathML elements keep downstream tooling correct. Manual lists drift away from the specifications, so this library scrapes the standards, normalizes the results, and publishes them as importable code.
 
 ## Installation
 
