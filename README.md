@@ -1,6 +1,6 @@
 # tags
 
-Accurate catalogues of HTML, SVG, and MathML elements keep downstream tooling correct. Manual lists drift away from the specifications, so this library scrapes the standards, normalizes the results, and publishes them as importable code.
+Markup tooling depends on spec-accurate catalogues of HTML, SVG, and MathML elements. Hand-maintained lists drift from the standards and introduce downstream bugs, so this library scrapes the official specifications, normalizes the data, and publishes importable code.
 
 ## Installation
 
@@ -16,7 +16,7 @@ The root package exposes three indexes:
 - `tags.SVG` lists every SVG element together with its attribute set and the collection of SVG global attributes.
 - `tags.MathML` is the set of MathML element names.
 
-Each index includes metadata with the upstream sources and the schema version used during generation. You can compare the schema version to detect when the published data changes.
+Each index includes metadata with the upstream sources and the schema version used during generation. Comparing the schema version reveals when the published data changes.
 
 ### HTML example
 
