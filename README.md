@@ -1,6 +1,6 @@
 # tags
 
-We built this library because we rely on a spec-accurate catalogue of HTML, SVG, and MathML elements to power our tooling. Hand-maintained lists drift, so we scrape the standards, normalize them, and commit the result as code you can import.
+This library exists because a spec-accurate catalogue of HTML, SVG, and MathML elements is essential for the tooling that depends on it. Hand-maintained lists drift, so the project scrapes the standards, normalizes them, and commits the result as code that is ready for import.
 
 ## Installation
 
@@ -16,7 +16,7 @@ The root package exposes three indexes:
 - `tags.SVG` lists every SVG element together with its attribute set and the collection of SVG global attributes.
 - `tags.MathML` is the set of MathML element names.
 
-Each index includes metadata with the upstream sources and the schema version we generated from. You can compare the schema version to detect when the published data changes.
+Each index includes metadata with the upstream sources and the schema version used during generation. You can compare the schema version to detect when the published data changes.
 
 ### HTML example
 
