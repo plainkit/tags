@@ -1,6 +1,6 @@
 # tags
 
-This library exists because a spec-accurate catalogue of HTML, SVG, and MathML elements is essential for the tooling that depends on it. Hand-maintained lists drift, so the project scrapes the standards, normalizes them, and commits the result as code that is ready for import.
+Spec-accurate catalogues of HTML, SVG, and MathML elements keep downstream tooling reliable. Instead of relying on hand-maintained lists that drift, the library automatically scrapes the standards, normalizes the data, and publishes ready-to-import code.
 
 ## Installation
 
