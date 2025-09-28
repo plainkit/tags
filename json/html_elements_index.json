@@ -3,7 +3,7 @@
     "source": "https://html.spec.whatwg.org/multipage/indices.html",
     "schemaVersion": "1.1.0",
     "elementCount": 115,
-    "attributeCount": 140
+    "attributeCount": 141
   },
   "globals": [
     {
@@ -245,6 +245,13 @@
           "name": "commandfor"
         },
         {
+          "name": "disabled",
+          "boolean": true
+        },
+        {
+          "name": "form"
+        },
+        {
           "name": "formaction"
         },
         {
@@ -259,6 +266,9 @@
         },
         {
           "name": "formtarget"
+        },
+        {
+          "name": "name"
         },
         {
           "name": "popovertarget"
@@ -397,6 +407,12 @@
         {
           "name": "disabled",
           "boolean": true
+        },
+        {
+          "name": "form"
+        },
+        {
+          "name": "name"
         }
       ]
     },
@@ -433,6 +449,9 @@
         {
           "name": "novalidate",
           "boolean": true
+        },
+        {
+          "name": "rel"
         },
         {
           "name": "target"
@@ -583,6 +602,13 @@
           "name": "dirname"
         },
         {
+          "name": "disabled",
+          "boolean": true
+        },
+        {
+          "name": "form"
+        },
+        {
           "name": "formaction"
         },
         {
@@ -619,6 +645,9 @@
         {
           "name": "multiple",
           "boolean": true
+        },
+        {
+          "name": "name"
         },
         {
           "name": "pattern"
@@ -823,6 +852,9 @@
           "name": "data"
         },
         {
+          "name": "form"
+        },
+        {
           "name": "height"
         },
         {
@@ -855,6 +887,10 @@
       "empty": false,
       "attributes": [
         {
+          "name": "disabled",
+          "boolean": true
+        },
+        {
           "name": "label"
         }
       ]
@@ -862,6 +898,10 @@
     "option": {
       "empty": false,
       "attributes": [
+        {
+          "name": "disabled",
+          "boolean": true
+        },
         {
           "name": "label"
         },
@@ -879,6 +919,12 @@
       "attributes": [
         {
           "name": "for"
+        },
+        {
+          "name": "form"
+        },
+        {
+          "name": "name"
         }
       ]
     },
@@ -886,7 +932,15 @@
       "empty": false
     },
     "picture": {
-      "empty": false
+      "empty": false,
+      "attributes": [
+        {
+          "name": "height"
+        },
+        {
+          "name": "width"
+        }
+      ]
     },
     "pre": {
       "empty": false
@@ -976,8 +1030,18 @@
           "name": "autocomplete"
         },
         {
+          "name": "disabled",
+          "boolean": true
+        },
+        {
+          "name": "form"
+        },
+        {
           "name": "multiple",
           "boolean": true
+        },
+        {
+          "name": "name"
         },
         {
           "name": "required",
@@ -1114,10 +1178,20 @@
           "name": "dirname"
         },
         {
+          "name": "disabled",
+          "boolean": true
+        },
+        {
+          "name": "form"
+        },
+        {
           "name": "maxlength"
         },
         {
           "name": "minlength"
+        },
+        {
+          "name": "name"
         },
         {
           "name": "placeholder"

@@ -28,7 +28,7 @@ var HTML = HTMLIndex{
 		Source:         "https://html.spec.whatwg.org/multipage/indices.html",
 		SchemaVersion:  "1.1.0",
 		ElementCount:   115,
-		AttributeCount: 140,
+		AttributeCount: 141,
 	},
 	Globals: []AttributeRef{
 		{Name: "accesskey"},
@@ -126,11 +126,14 @@ var HTML = HTMLIndex{
 			Attributes: []AttributeRef{
 				{Name: "command"},
 				{Name: "commandfor"},
+				{Name: "disabled", Boolean: true},
+				{Name: "form"},
 				{Name: "formaction"},
 				{Name: "formenctype"},
 				{Name: "formmethod"},
 				{Name: "formnovalidate", Boolean: true},
 				{Name: "formtarget"},
+				{Name: "name"},
 				{Name: "popovertarget"},
 				{Name: "popovertargetaction"},
 				{Name: "type"},
@@ -199,6 +202,8 @@ var HTML = HTMLIndex{
 		"fieldset": {
 			Attributes: []AttributeRef{
 				{Name: "disabled", Boolean: true},
+				{Name: "form"},
+				{Name: "name"},
 			},
 		},
 		"figcaption": {},
@@ -213,6 +218,7 @@ var HTML = HTMLIndex{
 				{Name: "method"},
 				{Name: "name"},
 				{Name: "novalidate", Boolean: true},
+				{Name: "rel"},
 				{Name: "target"},
 			},
 		},
@@ -273,6 +279,8 @@ var HTML = HTMLIndex{
 				{Name: "checked", Boolean: true},
 				{Name: "colorspace"},
 				{Name: "dirname"},
+				{Name: "disabled", Boolean: true},
+				{Name: "form"},
 				{Name: "formaction"},
 				{Name: "formenctype"},
 				{Name: "formmethod"},
@@ -285,6 +293,7 @@ var HTML = HTMLIndex{
 				{Name: "min"},
 				{Name: "minlength"},
 				{Name: "multiple", Boolean: true},
+				{Name: "name"},
 				{Name: "pattern"},
 				{Name: "placeholder"},
 				{Name: "popovertarget"},
@@ -372,6 +381,7 @@ var HTML = HTMLIndex{
 		"object": {
 			Attributes: []AttributeRef{
 				{Name: "data"},
+				{Name: "form"},
 				{Name: "height"},
 				{Name: "name"},
 				{Name: "type"},
@@ -387,11 +397,13 @@ var HTML = HTMLIndex{
 		},
 		"optgroup": {
 			Attributes: []AttributeRef{
+				{Name: "disabled", Boolean: true},
 				{Name: "label"},
 			},
 		},
 		"option": {
 			Attributes: []AttributeRef{
+				{Name: "disabled", Boolean: true},
 				{Name: "label"},
 				{Name: "selected", Boolean: true},
 				{Name: "value"},
@@ -400,11 +412,18 @@ var HTML = HTMLIndex{
 		"output": {
 			Attributes: []AttributeRef{
 				{Name: "for"},
+				{Name: "form"},
+				{Name: "name"},
 			},
 		},
-		"p":       {},
-		"picture": {},
-		"pre":     {},
+		"p": {},
+		"picture": {
+			Attributes: []AttributeRef{
+				{Name: "height"},
+				{Name: "width"},
+			},
+		},
+		"pre": {},
 		"progress": {
 			Attributes: []AttributeRef{
 				{Name: "max"},
@@ -440,7 +459,10 @@ var HTML = HTMLIndex{
 		"select": {
 			Attributes: []AttributeRef{
 				{Name: "autocomplete"},
+				{Name: "disabled", Boolean: true},
+				{Name: "form"},
 				{Name: "multiple", Boolean: true},
+				{Name: "name"},
 				{Name: "required", Boolean: true},
 				{Name: "size"},
 			},
@@ -502,8 +524,11 @@ var HTML = HTMLIndex{
 				{Name: "autocomplete"},
 				{Name: "cols"},
 				{Name: "dirname"},
+				{Name: "disabled", Boolean: true},
+				{Name: "form"},
 				{Name: "maxlength"},
 				{Name: "minlength"},
+				{Name: "name"},
 				{Name: "placeholder"},
 				{Name: "readonly", Boolean: true},
 				{Name: "required", Boolean: true},

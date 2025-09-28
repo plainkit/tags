@@ -10,16 +10,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-)
-
-var (
-	customElementRE = regexp.MustCompile(`(?i)custom elements`)
-	parenRE         = regexp.MustCompile(`\([^)]+\)`)
 )
 
 // Output captures the indexed HTML element metadata produced from the WHATWG specification.
@@ -50,6 +44,12 @@ type AttributeRef struct {
 	Boolean bool   `json:"boolean,omitempty"`
 }
 
+type elementRow struct {
+	empty      bool
+	hasGlobals bool
+	attributes []string
+}
+
 // Build fetches the HTML specification index from specURL, parses attribute metadata,
 // and returns a structured Output ready for serialization.
 func Build(ctx context.Context, client *http.Client, specURL, schemaVersion string) (Output, error) {
@@ -58,90 +58,84 @@ func Build(ctx context.Context, client *http.Client, specURL, schemaVersion stri
 		return Output{}, err
 	}
 
-	nodes := doc.Find("#attributes-1 tbody tr")
-	if nodes.Length() == 0 {
-		return Output{}, errors.New("missing results in html")
+	booleanAttrs, globalAttrs, attributeElements, err := parseAttributeMetadata(doc)
+	if err != nil {
+		return Output{}, err
 	}
 
-	attributes := map[string][]string{"*": nil}
-	booleanAttrSet := make(map[string]struct{})
-
-	nodes.Each(func(_ int, s *goquery.Selection) {
-		cells := s.ChildrenFiltered("td,th")
-		if cells.Length() < 2 {
-			return
-		}
-
-		name := strings.TrimSpace(cells.Eq(0).Text())
-		value := strings.TrimSpace(cells.Eq(1).Text())
-		if name == "" || value == "" {
-			return
-		}
-
-		if customElementRE.MatchString(value) {
-			return
-		}
-
-		if cells.Length() > 3 {
-			typeCell := strings.TrimSpace(cells.Eq(3).Text())
-			if strings.Contains(strings.ToLower(typeCell), "boolean attribute") {
-				booleanAttrSet[name] = struct{}{}
-			}
-		}
-
-		elements := extractElements(value)
-		for _, element := range elements {
-			if element == "" {
-				continue
-			}
-
-			attrList := attributes[element]
-			if attrList == nil {
-				attrList = []string{}
-			}
-
-			if !contains(attrList, name) {
-				attrList = append(attrList, name)
-			}
-			attributes[element] = attrList
-		}
-	})
-
-	emptyElements := ensureElementCoverage(attributes, doc)
-	normalized, globals := normalize(attributes)
-
-	emptySet := make(map[string]struct{}, len(emptyElements))
-	for _, name := range emptyElements {
-		emptySet[name] = struct{}{}
+	elements, err := parseElementsTable(doc)
+	if err != nil {
+		return Output{}, err
 	}
 
-	attributeSet := make(map[string]struct{})
-	globalRefs := make([]AttributeRef, 0, len(globals))
-	for _, attr := range globals {
-		attributeSet[attr] = struct{}{}
+	for elementName, attrs := range attributeElements {
+		row, ok := elements[elementName]
+		if !ok {
+			continue
+		}
+		row.attributes = append(row.attributes, attrs...)
+		elements[elementName] = row
+	}
+
+	globalAttrSet := make(map[string]struct{}, len(globalAttrs))
+	for _, attr := range globalAttrs {
+		globalAttrSet[attr] = struct{}{}
+	}
+
+	globalRefs := make([]AttributeRef, 0, len(globalAttrs))
+	for _, attr := range globalAttrs {
 		ref := AttributeRef{Name: attr}
-		if _, ok := booleanAttrSet[attr]; ok {
+		if _, ok := booleanAttrs[attr]; ok {
 			ref.Boolean = true
 		}
 		globalRefs = append(globalRefs, ref)
 	}
 
-	elementSummaries := make(map[string]ElementSummary, len(normalized))
-	for element, attrs := range normalized {
-		var refs []AttributeRef
-		for _, attr := range attrs {
+	attributeSet := make(map[string]struct{}, len(globalAttrs))
+	for _, attr := range globalAttrs {
+		attributeSet[attr] = struct{}{}
+	}
+
+	elementSummaries := make(map[string]ElementSummary, len(elements))
+	for name, row := range elements {
+		filtered := make([]string, 0, len(row.attributes))
+		seen := make(map[string]struct{}, len(row.attributes))
+		for _, attr := range row.attributes {
+			attr = strings.ToLower(strings.TrimSpace(attr))
+			if attr == "" {
+				continue
+			}
+			if _, ok := seen[attr]; ok {
+				continue
+			}
+			seen[attr] = struct{}{}
+			if strings.HasPrefix(attr, "on") {
+				continue
+			}
+			if row.hasGlobals {
+				if _, ok := globalAttrSet[attr]; ok {
+					continue
+				}
+			}
+			filtered = append(filtered, attr)
+		}
+		sort.Strings(filtered)
+
+		refs := make([]AttributeRef, 0, len(filtered))
+		for _, attr := range filtered {
 			attributeSet[attr] = struct{}{}
 			ref := AttributeRef{Name: attr}
-			if _, ok := booleanAttrSet[attr]; ok {
+			if _, ok := booleanAttrs[attr]; ok {
 				ref.Boolean = true
 			}
 			refs = append(refs, ref)
 		}
-		_, empty := emptySet[element]
-		elementSummaries[element] = ElementSummary{
-			Empty:      empty,
-			Attributes: refs,
+
+		summary := ElementSummary{Empty: row.empty}
+		if len(refs) > 0 {
+			summary.Attributes = refs
 		}
+		elementSummaries[name] = summary
 	}
 
 	attributeCount := len(attributeSet)
@@ -243,6 +237,159 @@ func WriteGo(path, packageName string, payload Output) error {
 	return nil
 }
 
+func parseAttributeMetadata(doc *goquery.Document) (map[string]struct{}, []string, map[string][]string, error) {
+	rows := doc.Find("#attributes-1 tbody tr")
+	if rows.Length() == 0 {
+		return nil, nil, nil, errors.New("missing attribute metadata in html")
+	}
+
+	booleanAttrs := make(map[string]struct{})
+	globalSet := make(map[string]struct{})
+	elementAttrs := make(map[string][]string)
+
+	rows.Each(func(_ int, s *goquery.Selection) {
+		cells := s.ChildrenFiltered("td,th")
+		if cells.Length() < 4 {
+			return
+		}
+
+		name := strings.ToLower(strings.TrimSpace(cells.Eq(0).Text()))
+		if name == "" {
+			return
+		}
+
+		typeCell := strings.ToLower(strings.TrimSpace(cells.Eq(3).Text()))
+		if strings.Contains(typeCell, "boolean attribute") {
+			booleanAttrs[name] = struct{}{}
+		}
+
+		elementCell := cells.Eq(1)
+		if strings.Contains(strings.ToLower(elementCell.Text()), "html elements") {
+			globalSet[name] = struct{}{}
+		}
+
+		names := collectElementNames(elementCell)
+		if len(names) == 0 {
+			return
+		}
+
+		for _, el := range names {
+			if el == "" {
+				continue
+			}
+			elementAttrs[el] = append(elementAttrs[el], name)
+		}
+	})
+
+	globals := make([]string, 0, len(globalSet))
+	for attr := range globalSet {
+		globals = append(globals, attr)
+	}
+	sort.Strings(globals)
+
+	return booleanAttrs, globals, elementAttrs, nil
+}
+
+func parseElementsTable(doc *goquery.Document) (map[string]elementRow, error) {
+	table := doc.Find("h3#elements-3").NextAllFiltered("table").First()
+	if table.Length() == 0 {
+		return nil, errors.New("missing element metadata in html")
+	}
+
+	result := make(map[string]elementRow)
+	var parseErr error
+
+	table.Find("tbody tr").Each(func(_ int, row *goquery.Selection) {
+		if parseErr != nil {
+			return
+		}
+
+		cells := row.ChildrenFiltered("th,td")
+		if cells.Length() < 6 {
+			parseErr = errors.New("unexpected element row shape in html table")
+			return
+		}
+
+		names := collectElementNames(cells.Eq(0))
+		if len(names) == 0 {
+			return
+		}
+
+		entry := elementRow{}
+		childrenText := strings.TrimSpace(cells.Eq(4).Text())
+		entry.empty = strings.EqualFold(childrenText, "empty")
+
+		attrCell := cells.Eq(5)
+		entry.hasGlobals = attrCell.Find("a[href$='#global-attributes']").Length() > 0
+		entry.attributes = collectAttributeNames(attrCell)
+
+		for _, name := range names {
+			result[name] = entry
+		}
+	})
+
+	if parseErr != nil {
+		return nil, parseErr
+	}
+
+	if len(result) == 0 {
+		return nil, errors.New("parsed zero elements from html table")
+	}
+
+	return result, nil
+}
+
+func collectElementNames(cell *goquery.Selection) []string {
+	if cell == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var names []string
+
+	cell.Find("code").Each(func(_ int, sel *goquery.Selection) {
+		name := strings.ToLower(strings.TrimSpace(sel.Text()))
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	})
+
+	return names
+}
+
+func collectAttributeNames(cell *goquery.Selection) []string {
+	if cell == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var names []string
+
+	cell.Find("code").Each(func(_ int, sel *goquery.Selection) {
+		name := strings.ToLower(strings.TrimSpace(sel.Text()))
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	})
+
+	if len(names) == 0 {
+		return nil
+	}
+
+	sort.Strings(names)
+	return names
+}
+
 func fetchDocument(ctx context.Context, client *http.Client, url string) (*goquery.Document, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -272,142 +419,4 @@ func fetchDocument(ctx context.Context, client *http.Client, url string) (*goque
 	}
 
 	return doc, nil
-}
-
-func extractElements(value string) []string {
-	if strings.Contains(value, "HTML elements") {
-		return []string{"*"}
-	}
-
-	parts := strings.Split(value, ";")
-	elements := make([]string, 0, len(parts))
-	for _, part := range parts {
-		clean := parenRE.ReplaceAllString(part, "")
-		clean = strings.TrimSpace(clean)
-		clean = strings.ToLower(clean)
-		if clean != "" {
-			elements = append(elements, clean)
-		}
-	}
-	return elements
-}
-
-func contains(list []string, value string) bool {
-	for _, item := range list {
-		if item == value {
-			return true
-		}
-	}
-	return false
-}
-
-func ensureElementCoverage(attributes map[string][]string, doc *goquery.Document) []string {
-	table := doc.Find("h3#elements-3").NextAllFiltered("table").First()
-	if table.Length() == 0 {
-		return nil
-	}
-
-	empty := make([]string, 0)
-	seenEmpty := make(map[string]struct{})
-
-	table.Find("tbody tr").Each(func(_ int, s *goquery.Selection) {
-		cells := s.ChildrenFiltered("td")
-		hasChildrenInfo := cells.Length() >= 4
-		emptyChildren := false
-		if hasChildrenInfo {
-			childrenCell := strings.TrimSpace(cells.Eq(3).Text())
-			emptyChildren = strings.EqualFold(childrenCell, "empty")
-		}
-
-		s.Find("th code").Each(func(_ int, codeSel *goquery.Selection) {
-			name := strings.TrimSpace(codeSel.Text())
-			if name == "" {
-				return
-			}
-			name = strings.ToLower(name)
-			if _, ok := attributes[name]; !ok {
-				attributes[name] = []string{}
-			}
-
-			if emptyChildren {
-				if _, ok := seenEmpty[name]; !ok {
-					seenEmpty[name] = struct{}{}
-					empty = append(empty, name)
-				}
-			}
-		})
-	})
-
-	if len(empty) == 0 {
-		return nil
-	}
-
-	sort.Strings(empty)
-	return empty
-}
-
-func normalize(attributes map[string][]string) (map[string][]string, []string) {
-	globals := sortAndDedupe(attributes["*"])
-	attributes["*"] = globals
-
-	globalSet := make(map[string]struct{}, len(globals))
-	for _, attr := range globals {
-		globalSet[attr] = struct{}{}
-	}
-
-	keys := make([]string, 0, len(attributes))
-	for key := range attributes {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	result := make(map[string][]string, len(keys))
-	for _, key := range keys {
-		if key == "*" {
-			continue
-		}
-
-		attrs := sortAndDedupe(attributes[key])
-		if len(globalSet) > 0 {
-			filtered := make([]string, 0, len(attrs))
-			for _, attr := range attrs {
-				if _, ok := globalSet[attr]; ok {
-					continue
-				}
-				filtered = append(filtered, attr)
-			}
-			attrs = filtered
-		}
-
-		if len(attrs) == 0 {
-			result[key] = nil
-			continue
-		}
-
-		result[key] = append([]string(nil), attrs...)
-	}
-
-	return result, globals
-}
-
-func dedupe(values []string) []string {
-	if len(values) == 0 {
-		return values
-	}
-
-	result := values[:1]
-	for i := 1; i < len(values); i++ {
-		if values[i] != values[i-1] {
-			result = append(result, values[i])
-		}
-	}
-	return result
-}
-
-func sortAndDedupe(values []string) []string {
-	if len(values) == 0 {
-		return values
-	}
-	sort.Strings(values)
-	return dedupe(values)
 }
