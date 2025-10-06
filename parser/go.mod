@@ -2,9 +2,9 @@ module parser
 
 go 1.25.1
 
-require (
-	github.com/PuerkitoBio/goquery v1.10.3
-	golang.org/x/net v0.44.0
-)
+require github.com/PuerkitoBio/goquery v1.10.3
 
-require github.com/andybalholm/cascadia v1.3.3 // indirect
+require (
+	github.com/andybalholm/cascadia v1.3.3 // indirect
+	golang.org/x/net v0.44.0 // indirect
+)
